@@ -1,0 +1,66 @@
+{
+  "name": "jsa",
+  "version": "0.0.0",
+  "description": "An (esolang) javascript assembly implementation.",
+  "keywords": [
+    "jsa",
+    "asm",
+    "js",
+    "typescript",
+    "esolang"
+  ],
+  "homepage": "https://github.com/ValentinHacker/JSA#README.md",
+  "bugs": {
+    "url": "https://github.com/ValentinHacker/JSA/issues",
+    "email": "alternativexxxy@gmail.com"
+  },
+  "license": "ISC",
+  "author": "V. H. <alternativexxxy@gmail.com>",
+  "contributors": [],
+  "files": [
+    "*"
+  ],
+  "main": "dist/lib/jsa.js",
+  "bin": {
+    "jsa": "./dist/bin/index.js"
+  },
+  "man": [],
+  "directories": {
+    "lib": "./lib",
+    "bin": "./bin",
+    "man": "./doc",
+    "doc": "./doc",
+    "example": "./test",
+    "test": "./test"
+  },
+  "typings": "lib/typings",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/ValentinHacker/JSA.git",
+    "directory": "./"
+  },
+  "config": {
+    "port": 1234
+  },
+  "dependencies": {
+    "fs-extra": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^7.0.0",
+    "tslib": "^1.9.3"
+  },
+  "peerDependencies": {},
+  "optionalDependencies": {},
+  "engines": {
+    "node": ">=12.0.0",
+    "npm": ">=3.0.0"
+  },
+  "os": [],
+  "cpu": [],
+  "publishConfig": {},
+  "scripts": {
+    "test": "node test/index.js",
+    "build": "npx tsc -w"
+  },
+  "bundleDependencies": []
+}
