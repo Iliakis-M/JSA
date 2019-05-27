@@ -1,5 +1,39 @@
-add 1
 
-def ok
-	add 3
+def M
+	mov -100
 end
+
+jmp skp:
+
+func:
+mov tmp acc
+add 10
+mov test acc
+mov acc tmp
+jmp back:
+
+skp:
+mov 100
+add 50
+mov test acc
+jmp func:
+
+back:
+mov [1,2,3]
+mov test2 acc.1
+ifl test2 3
+jmp not:
+jmp ok:
+
+not:
+mov "not\ ok"
+jmp end:
+
+ok:
+mov "ok"
+jmp end:
+
+end:
+prt acc ENDL
+mov M.acc 5
+prt M.acc

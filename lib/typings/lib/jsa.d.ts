@@ -1,40 +1,118 @@
-/// <reference types="node" />
 import { EventEmitter } from "events";
 export declare module JSA {
     namespace config {
         var extname: string;
-        var endl: string;
+        var jmplab: string;
+        var arraysep: string;
+        var startsmbl: string;
+        var endsmbl: string;
+        var asn: string;
+        var fn: string;
+        var isScopeEnd: string;
         var sep: string;
-        var modifiers: RegExp;
+        var endl: string;
+        var sep_r: RegExp;
+        var endl_r: RegExp;
         var isScope: RegExp;
-        var isScopeEnd: RegExp;
+        var comment: RegExp;
+        var index: RegExp;
+        var str: RegExp;
+        var prop: RegExp;
+        var escs: RegExp;
     }
     namespace JSAErrors {
         const EBADN: SyntaxError;
         const EBADS: SyntaxError;
+        const EBADCAL: SyntaxError;
+        const EBADSYN: SyntaxError;
+        const EINSNOTEX: SyntaxError;
+        const EBADJMP: SyntaxError;
     }
     class Scope extends EventEmitter {
-        scopes: Map<string, Scope>;
-        registers: Map<string, number>;
-        instructions: Instruction[];
-        isNS: boolean;
-        isAsync: boolean;
-        name: string;
-        constructor(name?: string, isNS?: boolean);
-        call(...params: any[]): void;
-        add(inst: Instruction | string): string | Instruction;
-        static load(code: string, name?: string, isNS?: boolean): Scope;
+        protected readonly scopes: Map<string, Scope>;
+        readonly registers: Map<string, any>;
+        readonly instructions: Instruction[];
+        protected readonly isAsync: boolean;
+        protected readonly name: string;
+        readonly _streams: {
+            input: NodeJS.ReadStream;
+            output: NodeJS.WriteStream;
+            error: NodeJS.WriteStream;
+        };
+        constructor(name?: string, isAsync?: boolean);
+        call(): Promise<void>;
+        protected add(inst: Instruction | string): Instruction | string;
+        getReg(reg: string): any;
+        setReg(reg: string, value: any): Map<string, any>;
+        static load(code: string, name?: string, isAsync?: boolean): Scope;
     }
     class Instruction {
-        params: string[];
-        parent: Scope;
+        protected readonly parent: Scope;
+        protected readonly _params: string[];
         static mappings: Map<RegExp, typeof Instruction>;
-        constructor(inst: string, parent: Scope);
+        protected constructor(inst: string, parent: Scope);
         static parse(line: string, parent: Scope): Instruction;
+        call(): Promise<boolean>;
     }
     namespace Instructions {
         class Add extends Instruction {
+            protected readonly to: string;
+            protected readonly num: number | string;
             constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Sub extends Add {
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Mul extends Add {
+            protected readonly num: number | string;
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Div extends Mul {
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Mod extends Div {
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Mov extends Instruction {
+            protected readonly from: number | string | Array<any>;
+            protected readonly to: string;
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Slp extends Instruction {
+            protected readonly interval: number | string;
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Label extends Instruction {
+            readonly name: string;
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Jmp extends Instruction {
+            protected to: string | number;
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class If extends Instruction {
+            private readonly eq;
+            protected readonly from: string;
+            protected readonly to: string | number;
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Prt extends Instruction {
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Method extends Instruction {
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
         }
     }
     function load(file: string): Promise<Scope>;

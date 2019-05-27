@@ -33,20 +33,18 @@
     "example": "./test",
     "test": "./test"
   },
-  "typings": "lib/typings",
+  "typings": "lib/typings/lib/jsa.d.ts",
   "repository": {
     "type": "git",
     "url": "git://github.com/ValentinHacker/JSA.git",
     "directory": "./"
-  },
-  "config": {
-    "port": 1234
   },
   "dependencies": {
     "fs-extra": "^8.0.1"
   },
   "devDependencies": {
     "@types/fs-extra": "^7.0.0",
+    "jshint": "^2.10.2",
     "tslib": "^1.9.3"
   },
   "peerDependencies": {},
@@ -60,7 +58,10 @@
   "publishConfig": {},
   "scripts": {
     "test": "node test/index.js",
-    "build": "npx tsc -w"
+    "debug": "node --inspect-brk=9229 test/index.js",
+    "build": "npx tsc -w",
+    "jsa": "node dist/bin/index.js test/langtest1"
   },
-  "bundleDependencies": []
+  "bundleDependencies": [],
+  "preferGlobal": true
 }
