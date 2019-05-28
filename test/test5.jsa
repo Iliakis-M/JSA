@@ -1,0 +1,17 @@
+# scope test
+
+def scp
+	prt "worked!" ENDL
+	add 100
+end
+
+scp
+aw acc 0
+
+prt acc.acc ENDL
+
+scp 0
+
+prt scp.acc ENDL
+
+# good...

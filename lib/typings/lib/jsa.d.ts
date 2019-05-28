@@ -45,7 +45,7 @@ export declare module JSA {
         constructor(name?: string);
         call(): Promise<void>;
         protected add(inst: Instruction | string): Instruction | string;
-        getReg(reg: string): any;
+        getReg(reg: string | number): any;
         setReg(reg: string, value: any): Map<string, any>;
         makeObj(): Scope;
         static load(code: string, name?: string): Scope;

@@ -46,6 +46,8 @@ end
 >  
 > * _math = Math  
 > * _date = Date  
+> * _process = process  
+> * _require = require  
 >  
 > Other symbols:  
 >  

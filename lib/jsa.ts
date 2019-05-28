@@ -6,8 +6,6 @@ import { EventEmitter } from "events";
 import { extname, basename } from "path";
 
 
-//IMPL: objects
-
 export module JSA {
 
 	export namespace config {
@@ -29,8 +27,8 @@ export module JSA {
 		//SECOND EXPANSION
 		export var isScope: RegExp = new RegExp("^(" + asn + " )?(" + fn + ") ?", '');
 		export var comment: RegExp = /#.*$/is
-		export var index: RegExp = /\[(.+)\]|\((.+)\)/ms;
-		export var str: RegExp = /^['"](.+)['"]$/ms;
+		export var index: RegExp = /\[(.+)?\]|\((.+)?\)/ms;
+		export var str: RegExp = /^['"](.+)?['"]$/ms;
 		export var prop: RegExp = /\.(.+)$/ms;
 		export var escs: RegExp = /(?<!\\)\\/gm
 	} //config
@@ -58,7 +56,9 @@ export module JSA {
 			["ARGS", []],  //load from CLI?
 			["_math", Math],
 			["_date", Date],
-			["null", null]
+			["null", null],
+			["_process", process],
+			["_require", require]
 		]);
 		readonly instructions: Instruction[] = [ ];
 
@@ -100,8 +100,10 @@ export module JSA {
 			return inst;
 		} //add
 
-		public getReg(reg: string): any {
-			if (config.index.test(reg)) {
+		public getReg(reg: string | number): any {
+			if (typeof reg === "number") {
+				return reg;
+			} else if (config.index.test(reg)) {
 				if (reg.replace(config.index, '')) {
 					let mat: string[] = reg.match(config.index);
 
@@ -126,8 +128,12 @@ export module JSA {
 
 						return typeof got === "function" ? got.bind(tmp) : got;
 					}
-				} else {
-					return reg.replace(config.index, "$1").split(config.arraysep).map((chunk: string) => {
+				} else {  //ARRAYS HERE
+					let tmp: string = reg.replace(config.index, "$1");
+
+					if (!tmp) return [ ];
+
+					return tmp.split(config.arraysep).map((chunk: string) => {
 						//@ts-ignore
 						if (isNaN(<number><unknown>chunk * 1) === false) chunk *= 1;
 						return chunk;
@@ -309,10 +315,16 @@ export module JSA {
 			} //ctor
 
 			public async call(): Promise<boolean> {
+				let reg = this.parent.getReg(this.to);
+
 				if (typeof this.num === "number") {
-					this.parent.setReg(this.to, this.parent.getReg(this.to) + this.num);
+					this.parent.setReg(this.to, reg + this.num);
 				} else {
-					this.parent.setReg(this.to, this.parent.getReg(this.to) + this.parent.getReg(this.num));
+					if (reg instanceof Array) {
+						reg.push(this.parent.getReg(this.num));
+					} else {
+						this.parent.setReg(this.to, reg + this.parent.getReg(this.num));
+					}
 				}
 
 				return false;
@@ -559,7 +571,7 @@ export module JSA {
 					}
 				} else {
 					if (this.eq) {
-						if (this.parent.getReg(this.from) == this.parent.getReg(this.to)) this.parent.setReg("jmx", this.parent.getReg("jmx") + 1);
+						if (this.parent.getReg(this.from) != this.parent.getReg(this.to)) this.parent.setReg("jmx", this.parent.getReg("jmx") + 1);
 					} else {
 						if (this.parent.getReg(this.from) < this.parent.getReg(this.to)) this.parent.setReg("jmx", this.parent.getReg("jmx") + 1);
 					}
@@ -616,6 +628,7 @@ export module JSA {
 						res(false);
 					});
 					
+
 					this.parent._streams.input.resume();
 				});
 			} //call
@@ -662,9 +675,9 @@ export module JSA {
 					let dat: any;
 
 					if (this.isAw) {
-						dat = await scp(...this._params.slice(2));
+						dat = await scp(...this._params.slice(2).map((param: string) => this.parent.getReg(param)));
 					} else {
-						dat = scp(...this._params.slice(1));
+						dat = scp(...this._params.slice(1).map((param: string) => this.parent.getReg(param)));
 					}
 					
 					this.parent.setReg(this.to, dat);

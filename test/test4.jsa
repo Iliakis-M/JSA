@@ -1,0 +1,12 @@
+# builtins test
+
+_require 'os'
+mov os acc
+
+os.freemem
+mov tmp acc
+mov []
+add tmp
+prt acc.0 ENDL
+
+# fixed empty arrays x2
