@@ -1,6 +1,6 @@
 
 def M
-	mov -100
+	mov [-100]
 end
 
 jmp skp:
@@ -34,6 +34,15 @@ mov "ok"
 jmp end:
 
 end:
+M
+mov T acc
+aw T 0
+mov T.acc
+prt acc[0] ENDL
+acc.push '10'
 prt acc ENDL
-mov M.acc 5
-prt M.acc
+
+prt "press\ a\ key\ to\ exit" ENDL
+inp
+_date.now
+prt acc ENDL

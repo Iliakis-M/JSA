@@ -22,12 +22,26 @@
 		"pretty": true,
 		"resolveJsonModule": true,
 		"watch": true,
-		"tsBuildInfoFile": "tsconfig.tsbuildinfo"
+		"tsBuildInfoFile": "tsconfig.tsbuildinfo",
+		"moduleResolution": "node",
+		"strict": true,
+		"noImplicitAny": false,
+		"strictNullChecks": false,
+		"baseUrl": "lib",
+		"rootDirs": [ "bin", "lib", "test" ],
+		"paths": {
+			"*": [
+				"*",
+				"..*",
+				"../..*"
+			]
+		},
+		"traceResolution": false
 	},
 	"jsdoc": "docs",
 	"compileOnSave": true,
 	"include": [
-		"./lib/**/*.ts", "test/**/*.ts"
+		"lib/**/*.ts", "test/**/*.ts", "bin/**/*.ts"
 	],
 	"exclude": [ "./node_modules/", "dist/", "lib/typings" ]
 }

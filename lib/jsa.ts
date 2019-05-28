@@ -16,7 +16,9 @@ export module JSA {
 		export var arraysep: string = ',';
 		export var startsmbl: string = "__START_";
 		export var endsmbl: string = "__END_";
+		export var base: string = "__BASE__";
 		export var asn: string = "asn";
+		export var aw: string = "aw";
 		export var fn: string = "def";
 		export var isScopeEnd: string = "end";
 		export var sep: string = ' ';
@@ -28,7 +30,7 @@ export module JSA {
 		export var isScope: RegExp = new RegExp("^(" + asn + " )?(" + fn + ") ?", '');
 		export var comment: RegExp = /#.*$/is
 		export var index: RegExp = /\[(.+)\]|\((.+)\)/ms;
-		export var str: RegExp = /^"(.+)"$/ms;
+		export var str: RegExp = /^['"](.+)['"]$/ms;
 		export var prop: RegExp = /\.(.+)$/ms;
 		export var escs: RegExp = /(?<!\\)\\/gm
 	} //config
@@ -50,12 +52,18 @@ export module JSA {
 			["acc", 0],
 			["jmx", 0],
 			["jmb", 0],
-			["ENDL", EOL]
+			["ENDL", EOL],
+			["ARGS", []],  //load from CLI?
+			["_math", Math],
+			["_date", Date],
+			["null", null]
 		]);
 		readonly instructions: Instruction[] = [ ];
 
 		protected readonly isAsync: boolean = false;
-		protected readonly name: string = "__BASE__";
+		protected readonly name: string = config.base;
+
+		@enumerable
 		readonly _streams: {
 			input: NodeJS.ReadStream,
 			output: NodeJS.WriteStream,
@@ -70,12 +78,17 @@ export module JSA {
 			super();
 			this.name = name || this.name;
 			this.isAsync = isAsync || this.isAsync;
+
+			this._streams.input.setRawMode(true);
+			this._streams.input.resume();
 		} //ctor
 
 		public async call(): Promise<void> {
 			for (; this.registers.get("jmx") < this.instructions.length; this.registers.set("jmx", this.registers.get("jmx") + 1)) {
 				if (await this.instructions[this.registers.get("jmx")].call()) break;
 			}
+
+			if (this.name === config.base) process.exit();
 		} //call
 
 		protected add(inst: Instruction | string): Instruction | string {
@@ -102,14 +115,19 @@ export module JSA {
 					if (isNaN(<number><unknown>t * 1) === false) t *= 1;
 					
 					if (typeof t === "number") {
-						return this.getReg(reg)[t];
+						let tmp = this.getReg(reg);
+						return typeof tmp[t] === "function" ? tmp[t].bing(tmp) : tmp[t];
 					} else if (config.str.test(t)) {  //D?
 						t = t.replace(config.str, "$1");  //why not use .prop syntax instead?
-						let ret: any = this.getReg(reg);
+						let ret: any = this.getReg(reg),
+							tmp = (ret instanceof Scope) ? ret.getReg(t) : ret[t];
 
-						return (ret instanceof Scope) ? ret.getReg(t) : ret[t];
+						return typeof tmp === "function" ? tmp.bind(ret) : tmp;
 					} else {
-						return this.getReg(reg)[this.getReg(t)];
+						let tmp = this.getReg(reg),
+								got = tmp[this.getReg(t)];
+
+						return typeof got === "function" ? got.bind(tmp) : got;
 					}
 				} else {
 					return reg.replace(config.index, "$1").split(config.arraysep).map((chunk: string) => {
@@ -125,9 +143,10 @@ export module JSA {
 
 				let ret: any = this.getReg(reg);
 
-				let t: string = mat[0].replace(config.prop, "$1");
+				let t: string = mat[0].replace(config.prop, "$1"),
+					tmp = (ret instanceof Scope) ? ret.getReg(t) : ret[t];
 
-				return (ret instanceof Scope) ? ret.getReg(t) : ret[t];
+				return typeof tmp === "function" ? tmp.bind(ret) : tmp;
 			} else if (config.str.test(reg)) {
 				return reg.replace(config.str, "$1");
 			}
@@ -135,7 +154,7 @@ export module JSA {
 			return this.registers.has(reg) ? this.registers.get(reg) : (this.scopes.has(reg) ? this.scopes.get(reg) : 0);
 		} //getReg
 
-		public setReg(reg: string, value: any): Map<string, any> {
+		public setReg(reg: string, value: any): Map<string, any> {  //for funcs?
 			if (config.index.test(reg)) {
 				if (reg.replace(config.index, '')) {
 					let mat: string[] = reg.match(config.index);
@@ -188,6 +207,14 @@ export module JSA {
 
 			return this.registers.set(reg, value);
 		} //setReg
+
+		public makeObj(): Scope {
+			let nscp: Scope = new Scope();
+
+			Object.assign(nscp, this);
+			
+			return nscp;
+		} //makeObj
 
 		public static load(code: string, name?: string, isAsync?: boolean): Scope {  //pass scope body as string
 			code = `${config.startsmbl}${config.jmplab}${config.endl.repeat(2)}${code}${config.endl.repeat(2)}${config.endsmbl}${config.jmplab}${config.endl}`;
@@ -277,7 +304,7 @@ export module JSA {
 			constructor(inst: string, parent: Scope) {
 				super(inst, parent);
 
-				if (this._params.length > 2) throws(JSAErrors.EBADCAL, `Parameters must be at most 1, the value${EOL}${this._params.join(config.sep)}`);
+				if (this._params.length > 2) throws(JSAErrors.EBADCAL, `Parameters must be at most 1, the value.${EOL}${this._params.join(config.sep)}`);
 
 				this.num = this._params[1] || this.num;
 				if (isNaN(<number><unknown>this.num * 1) === false) {
@@ -381,8 +408,8 @@ export module JSA {
 			constructor(inst: string, parent: Scope) {
 				super(inst, parent);
 
-				if (this._params.length < 2) throws(JSAErrors.EBADCAL, `Parameters must be at least 1, the value${EOL}${this._params.join(config.sep)}`);
-				if (this._params.length > 3) throws(JSAErrors.EBADCAL, `Parameters must be at most 2, the address and the value${EOL}${this._params.join(config.sep)}`);
+				if (this._params.length < 2) throws(JSAErrors.EBADCAL, `Parameters must be at least 1, the value.${EOL}${this._params.join(config.sep)}`);
+				if (this._params.length > 3) throws(JSAErrors.EBADCAL, `Parameters must be at most 2, the address and the value.${EOL}${this._params.join(config.sep)}`);
 
 				if (this._params.length === 3) {
 					this.to = this._params[1];
@@ -416,7 +443,7 @@ export module JSA {
 			constructor(inst: string, parent: Scope) {
 				super(inst, parent);
 
-				if (this._params.length > 2) throws(JSAErrors.EBADCAL, `Parameters must be at most 1, the interval${EOL}${this._params.join(config.sep)}`);
+				if (this._params.length > 2) throws(JSAErrors.EBADCAL, `Parameters must be at most 1, the interval.${EOL}${this._params.join(config.sep)}`);
 
 				this.interval = this._params[1];
 
@@ -435,7 +462,7 @@ export module JSA {
 					intrv = this.interval;
 				}
 
-				return new Promise(((res: (value: boolean) => void, rej?: Error) => setTimeout(res, intrv)).bind(this));
+				return new Promise(((res: (value: boolean) => void, rej?: (err: Error) => void) => setTimeout(res, intrv)).bind(this));
 			} //call
 
 		} //Slp
@@ -447,7 +474,7 @@ export module JSA {
 			constructor(inst: string, parent: Scope) {
 				super(inst, parent);
 
-				if (this._params.length !== 1) throws(JSAErrors.EBADCAL, `Must follow the format 'label${config.jmplab}'${EOL}${this._params.join(config.sep)}`);
+				if (this._params.length !== 1) throws(JSAErrors.EBADCAL, `Must follow the format 'label${config.jmplab}'.${EOL}${this._params.join(config.sep)}`);
 
 				this.name = this._params[0];
 			} //ctor
@@ -465,7 +492,7 @@ export module JSA {
 			constructor(inst: string, parent: Scope) {
 				super(inst, parent);
 
-				if (this._params.length > 2) throws(JSAErrors.EBADCAL, `Parameters must be at most 1, the label${EOL}${this._params.join(config.sep)}`);
+				if (this._params.length > 2) throws(JSAErrors.EBADCAL, `Parameters must be at most 1, the label.${EOL}${this._params.join(config.sep)}`);
 
 				this.to = this._params[1];
 
@@ -514,7 +541,7 @@ export module JSA {
 			constructor(inst: string, parent: Scope) {
 				super(inst, parent);
 
-				if (this._params.length > 3) throws(JSAErrors.EBADCAL, `Parameters must be at most 2, the address and the value${EOL}${this._params.join(config.sep)}`);
+				if (this._params.length > 3) throws(JSAErrors.EBADCAL, `Parameters must be at most 2, the address and the value.${EOL}${this._params.join(config.sep)}`);
 
 				if (this._params[0].endsWith('e')) {
 					this.eq = true;
@@ -555,21 +582,25 @@ export module JSA {
 
 		export class Prt extends Instruction {
 
+			protected readonly default: string = "acc";
+
 			constructor(inst: string, parent: Scope) {
 				super(inst, parent);
-
-				if (this._params.length === 1) throws(JSAErrors.EBADCAL, `Parameters must be at least 1, the value${EOL}${this._params.join(config.sep)}`);
 			} //ctor
 
 			public async call(): Promise<boolean> {
 				let prec: string[] = this._params.slice(1);
 
-				for (let param of prec) {
-					if (config.str.test(param)) {
-						this.parent._streams.output.write(param.replace(config.str, "$1"));
-					} else {
-						this.parent._streams.output.write(this.parent.getReg(param) + '');
+				if (prec.length) {
+					for (let param of prec) {
+						if (config.str.test(param)) {
+							this.parent._streams.output.write(param.replace(config.str, "$1"));
+						} else {
+							this.parent._streams.output.write(this.parent.getReg(param) + '');
+						}
 					}
+				} else {
+					this.parent._streams.output.write(this.parent.getReg(this.default) + '');
 				}
 
 				return false;
@@ -577,14 +608,76 @@ export module JSA {
 
 		} //Prt
 
-		export class Method extends Instruction {
-			//creates scopes only!
+		export class Inp extends Instruction {
+
+			protected readonly to: string = "acc";
 
 			constructor(inst: string, parent: Scope) {
 				super(inst, parent);
+
+				if (this._params.length !== 1) throws(JSAErrors.EBADCAL, `Parameters must be exactly 0.${EOL}${this._params.join(config.sep)}`);
 			} //ctor
 
 			public async call(): Promise<boolean> {
+				return new Promise((res, rej) => {
+					this.parent._streams.input.once("readable", () => {
+						this.parent.setReg(this.to, this.parent._streams.input.read(1));
+						res(false);
+					});
+				});
+			} //call
+
+		} //Inp
+
+		export class Method extends Instruction {
+			//creates scopes and calls only!
+
+			protected readonly name: string;
+			protected readonly to: string = "acc";
+			protected readonly args: string = "ARGS";
+			protected readonly isAw: boolean = false;
+
+			constructor(inst: string, parent: Scope) {
+				super(inst, parent);
+
+				if (this._params[0] === config.aw) {
+					this.isAw = true;
+					this.name = this._params[1];
+				} else {
+					this.name = this._params[0];
+				}
+			} //ctor
+
+			public async call(): Promise<boolean> {
+				let scp: Scope | Function;
+
+				if ((scp = this.parent.getReg(this.name)) instanceof Scope) {
+					if (this._params.length > 1) {
+						this._params.slice(this.isAw ? 2 : 1).forEach((param: string, idx: number) => {
+							(<Scope>scp).setReg(this.args + `[${idx}]`, param);
+						});
+
+						if (this.isAw) {
+							await scp.call();
+						} else {
+							setImmediate(scp.call);
+						}
+					} else {
+						this.parent.setReg(this.to, scp.makeObj());
+					}
+				} else if (typeof scp === "function") {
+					let dat: any;
+
+					if (this.isAw) {
+						dat = await scp(...this._params.slice(2));
+					} else {
+						dat = scp(...this._params.slice(1));
+					}
+					
+					this.parent.setReg(this.to, dat);
+				} else {
+					throws(JSAErrors.EBADS, `${this.name} is not a scope.`);
+				}
 
 				return false;
 			} //call
@@ -604,9 +697,10 @@ export module JSA {
 		[/^jmp (.+)$/, Instructions["Jmp"]],
 		[/^inc (.+){1,2}$/, Instructions["Inc"]],  //IMPL
 		[/^if(e|l)( .+){0,2}$/, Instructions["If"]],
-		[/^prt (.+)$/, Instructions["Prt"]],  //IMPL
+		[/^prt( .+)?$/, Instructions["Prt"]],
+		[/^inp$/, Instructions["Inp"]],
 		[/^(.+):$/, Instructions["Label"]],
-		[/^./, Instruction["Method"]]  //method call +[aw]
+		[/^./, Instructions["Method"]]  //method call +[aw]
 	]);
 
 
@@ -618,7 +712,9 @@ export module JSA {
 				if (err) {
 					rej(err);
 				} else {
-					res(Scope.load(data.toString()));
+					let scp: Scope = Scope.load(data.toString());
+					scp.setReg("_isMain_", 1);
+					res(scp);
 				}
 			});
 		});
@@ -629,6 +725,15 @@ export module JSA {
 
 		throw err;
 	} //throws
+
+	//@Decorator
+	function enumerable(target: Object, propertyKey: string | symbol): void {
+		Object.defineProperty(target, propertyKey,  {
+			enumerable: false,
+			configurable: true,
+			writable: true
+		});
+	} //enumerable
 
 } //JSA
 

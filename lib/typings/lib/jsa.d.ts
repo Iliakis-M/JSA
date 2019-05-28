@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { EventEmitter } from "events";
 export declare module JSA {
     namespace config {
@@ -6,7 +7,9 @@ export declare module JSA {
         var arraysep: string;
         var startsmbl: string;
         var endsmbl: string;
+        var base: string;
         var asn: string;
+        var aw: string;
         var fn: string;
         var isScopeEnd: string;
         var sep: string;
@@ -44,6 +47,7 @@ export declare module JSA {
         protected add(inst: Instruction | string): Instruction | string;
         getReg(reg: string): any;
         setReg(reg: string, value: any): Map<string, any>;
+        makeObj(): Scope;
         static load(code: string, name?: string, isAsync?: boolean): Scope;
     }
     class Instruction {
@@ -107,10 +111,20 @@ export declare module JSA {
             call(): Promise<boolean>;
         }
         class Prt extends Instruction {
+            protected readonly default: string;
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Inp extends Instruction {
+            protected readonly to: string;
             constructor(inst: string, parent: Scope);
             call(): Promise<boolean>;
         }
         class Method extends Instruction {
+            protected readonly name: string;
+            protected readonly to: string;
+            protected readonly args: string;
+            protected readonly isAw: boolean;
             constructor(inst: string, parent: Scope);
             call(): Promise<boolean>;
         }
