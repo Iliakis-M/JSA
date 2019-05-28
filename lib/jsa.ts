@@ -1,9 +1,9 @@
 "use strict";
 
-import * as fs from "fs-extra";
+import { readFile } from "fs-extra";
 import { EOL } from "os";
 import { EventEmitter } from "events";
-import { extname } from "path";
+import { extname, basename } from "path";
 
 
 //IMPL: objects
@@ -42,17 +42,19 @@ export module JSA {
 		export const EBADSYN: SyntaxError = new SyntaxError("Bad Syntax.");
 		export const EINSNOTEX: SyntaxError = new SyntaxError("Instruction does not exist.");
 		export const EBADJMP: SyntaxError = new SyntaxError("Bad Jump.");
+		export const EBADPTH: ReferenceError = new ReferenceError("Bad Path.");
 	} //JSAErrors
 
 
 	export class Scope extends EventEmitter {
 
-		protected readonly scopes: Map<string, Scope> = new Map<string, Scope>();
+		readonly scopes: Map<string, Scope> = new Map<string, Scope>();
 		readonly registers: Map<string, any> = new Map<string, any>([
 			["acc", 0],
 			["jmx", 0],
 			["jmb", 0],
 			["ENDL", EOL],
+			["WSPC", ' '],
 			["ARGS", []],  //load from CLI?
 			["_math", Math],
 			["_date", Date],
@@ -60,8 +62,7 @@ export module JSA {
 		]);
 		readonly instructions: Instruction[] = [ ];
 
-		protected readonly isAsync: boolean = false;
-		protected readonly name: string = config.base;
+		readonly name: string = config.base;
 
 		@enumerable
 		readonly _streams: {
@@ -74,21 +75,17 @@ export module JSA {
 			error: process.stderr
 		};
 
-		constructor(name?: string, isAsync?: boolean) {
+		constructor(name?: string) {
 			super();
 			this.name = name || this.name;
-			this.isAsync = isAsync || this.isAsync;
 
 			this._streams.input.setRawMode(true);
-			this._streams.input.resume();
 		} //ctor
 
 		public async call(): Promise<void> {
 			for (; this.registers.get("jmx") < this.instructions.length; this.registers.set("jmx", this.registers.get("jmx") + 1)) {
 				if (await this.instructions[this.registers.get("jmx")].call()) break;
 			}
-
-			if (this.name === config.base) process.exit();
 		} //call
 
 		protected add(inst: Instruction | string): Instruction | string {
@@ -216,15 +213,14 @@ export module JSA {
 			return nscp;
 		} //makeObj
 
-		public static load(code: string, name?: string, isAsync?: boolean): Scope {  //pass scope body as string
+		public static load(code: string, name?: string): Scope {  //pass scope body as string
 			code = `${config.startsmbl}${config.jmplab}${config.endl.repeat(2)}${code}${config.endl.repeat(2)}${config.endsmbl}${config.jmplab}${config.endl}`;
 
 			let lines = code.split(config.endl_r),
 				subscope: number = -1,
 				nscope: string = '',
 				nscopename: string = '',
-				nscopeasync: boolean,
-				scope: Scope = new Scope(name, isAsync),
+				scope: Scope = new Scope(name),
 				lncnt: number = 0;
 
 			for (let line of lines) {
@@ -238,7 +234,6 @@ export module JSA {
 					if (parts.length > 3) throws(JSAErrors.EBADSYN, `Too many parameters on declaration, need at most 3. (${lncnt})${EOL}${line}`);
 					if (parts.length < 2) throws(JSAErrors.EBADSYN, `Too little parameters on declaration, need at least 2. (${lncnt})${EOL}${line}`);
 					if (parts.length === 3 && config.asn !== parts[0]) throws(JSAErrors.EBADSYN, `First parameter must be 'asn', second 'def' and third the name. (${lncnt})${EOL}${line}`);
-					if (parts.length === 3) nscopeasync = true;
 					if (config.isScope.test(nscopename = parts[parts.length - 1])) throws(JSAErrors.EBADN);
 				} else if (subscope > -1 && config.isScopeEnd !== line) {
 					nscope += line + config.endl;
@@ -246,7 +241,7 @@ export module JSA {
 					if (config.isScope.test(line)) subscope++;
 				} else if (subscope > -1) {
 					if (--subscope === -1) {
-						scope.scopes.set(nscopename, Scope.load(nscope, nscopename, nscopeasync));
+						scope.scopes.set(nscopename, Scope.load(nscope, nscopename));
 					} else if (subscope < -1) {
 						throws(JSAErrors.EBADS, line);
 					} else {
@@ -541,18 +536,13 @@ export module JSA {
 			constructor(inst: string, parent: Scope) {
 				super(inst, parent);
 
-				if (this._params.length > 3) throws(JSAErrors.EBADCAL, `Parameters must be at most 2, the address and the value.${EOL}${this._params.join(config.sep)}`);
+				if (this._params.length > 2) throws(JSAErrors.EBADCAL, `Parameters must be at most 1, the value.${EOL}${this._params.join(config.sep)}`);
 
 				if (this._params[0].endsWith('e')) {
 					this.eq = true;
 				}
 
-				if (this._params.length === 3) {
-					this.from = this._params[1];
-					this.to = this._params[2];
-				} else {
-					this.to = this._params[1];
-				}
+				this.to = this._params[1] || this.to;
 
 				if (isNaN(<number><unknown>this.to) === false) {
 					//@ts-ignore
@@ -622,8 +612,11 @@ export module JSA {
 				return new Promise((res, rej) => {
 					this.parent._streams.input.once("readable", () => {
 						this.parent.setReg(this.to, this.parent._streams.input.read(1));
+						this.parent._streams.input.pause();
 						res(false);
 					});
+					
+					this.parent._streams.input.resume();
 				});
 			} //call
 
@@ -660,7 +653,7 @@ export module JSA {
 						if (this.isAw) {
 							await scp.call();
 						} else {
-							setImmediate(scp.call);
+							setImmediate(scp.call.bind(scp));
 						}
 					} else {
 						this.parent.setReg(this.to, scp.makeObj());
@@ -683,10 +676,45 @@ export module JSA {
 			} //call
 
 		} //Method
+
+		export class Inc extends Instruction {
+
+			protected from: string;
+			protected readonly to: string = "acc";
+
+			constructor(inst: string, parent: Scope) {
+				super(inst, parent);
+
+				if (this._params.length !== 2) throws(JSAErrors.EBADCAL, `Parameters must be exactly 1, the path.${EOL}${this._params.join(config.sep)}`);
+
+				this.from = this._params[1];
+			} //ctor
+
+			public async call(): Promise<boolean> {
+				let from: string = this.parent.getReg(this.from);
+				if (extname(from) === '') from += config.extname;
+
+				return new Promise((res: (value: boolean) => void, rej: (err: Error) => void) => {
+					readFile(from, (err: Error, data: Buffer) => {
+						if (err) {
+							rej(err);
+							throws(JSAErrors.EBADPTH, `${from}`);
+						} else {
+							let scp: Scope = Scope.load(data.toString(), basename(from, extname(from)));
+							scp.setReg("_isMain_", 0);
+							this.parent.setReg(this.to, scp);
+							this.parent.scopes.set(scp.name, scp);
+							res(false);
+						}
+					});
+				});
+			} //call
+
+		} //Inc
 		
 	} //Instructions
 
-	Instruction.mappings = new Map([
+	Instruction.mappings = new Map<RegExp, typeof Instruction>([
 		[/^add( .+)?$/, Instructions["Add"]],
 		[/^sub( .+)?$/, Instructions["Sub"]],  //D
 		[/^mul (.+)$/, Instructions["Mul"]],
@@ -695,12 +723,12 @@ export module JSA {
 		[/^mov (.+){1,2}$/, Instructions["Mov"]],
 		[/^slp( .+)?$/, Instructions["Slp"]],
 		[/^jmp (.+)$/, Instructions["Jmp"]],
-		[/^inc (.+){1,2}$/, Instructions["Inc"]],  //IMPL
 		[/^if(e|l)( .+){0,2}$/, Instructions["If"]],
 		[/^prt( .+)?$/, Instructions["Prt"]],
 		[/^inp$/, Instructions["Inp"]],
+		[/^inc (.+){1,2}$/, Instructions["Inc"]],  //IMPL
 		[/^(.+):$/, Instructions["Label"]],
-		[/^./, Instructions["Method"]]  //method call +[aw]
+		[/^./, Instructions["Method"]]
 	]);
 
 
@@ -708,7 +736,7 @@ export module JSA {
 		if (extname(file) === '') file += config.extname;
 
 		return new Promise((res: (value: Scope) => void, rej: (err: Error) => void) => {
-			fs.readFile(file, (err: Error, data: Buffer) => {
+			readFile(file, (err: Error, data: Buffer) => {
 				if (err) {
 					rej(err);
 				} else {
