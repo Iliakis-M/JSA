@@ -1,0 +1,13 @@
+#!/usr/bin/env node
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const jsa_1 = tslib_1.__importDefault(require("../lib/jsa"));
+process.title = "JSA";
+if (process.argv[2]) {
+    jsa_1.default.load(process.argv[2]).then((scope) => scope.call(), (msg) => console.error(msg.message));
+}
+else {
+    console.log("jsa filename<String>");
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi9iaW4vaW5kZXgudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IjtBQUVBLFlBQVksQ0FBQzs7O0FBRWIsNkRBQTZCO0FBRTdCLE9BQU8sQ0FBQyxLQUFLLEdBQUcsS0FBSyxDQUFDO0FBRXRCLElBQUksT0FBTyxDQUFDLElBQUksQ0FBQyxDQUFDLENBQUMsRUFBRTtJQUNwQixhQUFHLENBQUMsSUFBSSxDQUFDLE9BQU8sQ0FBQyxJQUFJLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxJQUFJLENBQUMsQ0FBQyxLQUFnQixFQUFFLEVBQUUsQ0FBQyxLQUFLLENBQUMsSUFBSSxFQUFFLEVBQUUsQ0FBQyxHQUFVLEVBQUUsRUFBRSxDQUFDLE9BQU8sQ0FBQyxLQUFLLENBQUMsR0FBRyxDQUFDLE9BQU8sQ0FBQyxDQUFDLENBQUM7Q0FDL0c7S0FBTTtJQUNOLE9BQU8sQ0FBQyxHQUFHLENBQUMsc0JBQXNCLENBQUMsQ0FBQztDQUNwQyIsInNvdXJjZXNDb250ZW50IjpbIiMhL3Vzci9iaW4vZW52IG5vZGVcclxuXHJcblwidXNlIHN0cmljdFwiO1xyXG5cclxuaW1wb3J0IEpTQSBmcm9tIFwiLi4vbGliL2pzYVwiO1xyXG5cclxucHJvY2Vzcy50aXRsZSA9IFwiSlNBXCI7XHJcblxyXG5pZiAocHJvY2Vzcy5hcmd2WzJdKSB7XHJcblx0SlNBLmxvYWQocHJvY2Vzcy5hcmd2WzJdKS50aGVuKChzY29wZTogSlNBLlNjb3BlKSA9PiBzY29wZS5jYWxsKCksIChtc2c6IEVycm9yKSA9PiBjb25zb2xlLmVycm9yKG1zZy5tZXNzYWdlKSk7XHJcbn0gZWxzZSB7XHJcblx0Y29uc29sZS5sb2coXCJqc2EgZmlsZW5hbWU8U3RyaW5nPlwiKTtcclxufVxyXG4iXX0=

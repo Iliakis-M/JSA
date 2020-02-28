@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { EventEmitter } from "events";
 export declare module JSA {
     namespace config {
@@ -6,7 +7,9 @@ export declare module JSA {
         var arraysep: string;
         var startsmbl: string;
         var endsmbl: string;
+        var base: string;
         var asn: string;
+        var aw: string;
         var fn: string;
         var isScopeEnd: string;
         var sep: string;
@@ -27,24 +30,25 @@ export declare module JSA {
         const EBADSYN: SyntaxError;
         const EINSNOTEX: SyntaxError;
         const EBADJMP: SyntaxError;
+        const EBADPTH: ReferenceError;
     }
     class Scope extends EventEmitter {
-        protected readonly scopes: Map<string, Scope>;
+        readonly scopes: Map<string, Scope>;
         readonly registers: Map<string, any>;
         readonly instructions: Instruction[];
-        protected readonly isAsync: boolean;
-        protected readonly name: string;
+        readonly name: string;
         readonly _streams: {
             input: NodeJS.ReadStream;
             output: NodeJS.WriteStream;
             error: NodeJS.WriteStream;
         };
-        constructor(name?: string, isAsync?: boolean);
+        constructor(name?: string);
         call(): Promise<void>;
         protected add(inst: Instruction | string): Instruction | string;
-        getReg(reg: string): any;
+        getReg(reg: string | number): any;
         setReg(reg: string, value: any): Map<string, any>;
-        static load(code: string, name?: string, isAsync?: boolean): Scope;
+        makeObj(): Scope;
+        static load(code: string, name?: string): Scope;
     }
     class Instruction {
         protected readonly parent: Scope;
@@ -107,10 +111,26 @@ export declare module JSA {
             call(): Promise<boolean>;
         }
         class Prt extends Instruction {
+            protected readonly default: string;
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Inp extends Instruction {
+            protected readonly to: string;
             constructor(inst: string, parent: Scope);
             call(): Promise<boolean>;
         }
         class Method extends Instruction {
+            protected readonly name: string;
+            protected readonly to: string;
+            protected readonly args: string;
+            protected readonly isAw: boolean;
+            constructor(inst: string, parent: Scope);
+            call(): Promise<boolean>;
+        }
+        class Inc extends Instruction {
+            protected from: string;
+            protected readonly to: string;
             constructor(inst: string, parent: Scope);
             call(): Promise<boolean>;
         }

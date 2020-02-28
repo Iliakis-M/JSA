@@ -1,0 +1,9 @@
+# inclusion with INPs
+
+inc 'test2'
+#inc 'test1'
+
+test2 'run'
+#test1 'run'
+
+# breaks with two readers...

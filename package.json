@@ -1,13 +1,14 @@
 {
   "name": "jsa",
-  "version": "0.0.0",
+  "version": "0.1.3",
   "description": "An (esolang) javascript assembly implementation.",
   "keywords": [
     "jsa",
     "asm",
     "js",
     "typescript",
-    "esolang"
+    "esolang",
+    "binary"
   ],
   "homepage": "https://github.com/ValentinHacker/JSA#README.md",
   "bugs": {
@@ -44,8 +45,10 @@
   },
   "devDependencies": {
     "@types/fs-extra": "^7.0.0",
+    "@types/node": "^12.0.2",
     "jshint": "^2.10.2",
-    "tslib": "^1.9.3"
+    "tslib": "^1.9.3",
+    "typescript": "^3.4.5"
   },
   "peerDependencies": {},
   "optionalDependencies": {},

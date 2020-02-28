@@ -1,0 +1,27 @@
+# external function test
+prt "Enter\ a\ string:" ENDL
+
+mov holder ''
+
+loop:
+
+inp
+prt
+
+ife
+jmp end:
+
+mov tmp acc
+mov acc holder
+add tmp
+mov holder acc
+
+jmp loop:
+
+
+end:
+
+holder.split ''
+prt "got\ first:" WSPC acc.0 ENDL
+
+# made a fix for methods

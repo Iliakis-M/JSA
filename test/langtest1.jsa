@@ -1,6 +1,6 @@
 
 def M
-	mov -100
+	mov [-100]
 end
 
 jmp skp:
@@ -21,7 +21,8 @@ jmp func:
 back:
 mov [1,2,3]
 mov test2 acc.1
-ifl test2 3
+mov acc test2
+ifl 3
 jmp not:
 jmp ok:
 
@@ -34,6 +35,20 @@ mov "ok"
 jmp end:
 
 end:
+M
+mov T acc
+aw T 0
+mov T.acc
+prt acc[0] ENDL
+acc.push 10
 prt acc ENDL
-mov M.acc 5
-prt M.acc
+
+_date.now
+prt acc ENDL
+
+inc 'test/langtest2'
+langtest2 15
+
+prt "press\ a\ key\ to\ exit" ENDL
+inp
+prt "exited" ENDL

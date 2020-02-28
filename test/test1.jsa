@@ -1,0 +1,27 @@
+# input test
+prt "JSA\ test\ -\ 1" ENDL
+prt "Input\ a\ string" ENDL "Press\ ENTER\ to\ submit." ENDL
+
+mov holder ""
+
+
+loop:
+
+inp
+prt
+
+ife
+jmp end:
+
+mov tmp acc  # hold char
+mov acc holder
+add tmp  # append char to holder
+mov holder acc
+jmp loop:
+
+
+end:
+
+prt ENDL "got:" WSPC holder
+
+# fixed comparisons

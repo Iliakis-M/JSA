@@ -1,0 +1,2 @@
+mov 100
+prt "module\ loaded!\ " ARGS.0 ENDL
